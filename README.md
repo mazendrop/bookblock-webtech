@@ -8,7 +8,7 @@ Zusätzlich können gespeicherte Bücher verwaltet werden, zum Beispiel mit eine
 ## Idee des Projekts
 
 Viele Menschen finden interessante Bücher online, verlieren sie aber später wieder aus dem Blick.  
-BrutalShelf löst dieses Problem, indem es Buchsuche und persönliche Leseliste in einer einfachen Webanwendung kombiniert.
+Bookblock löst dieses Problem, indem es Buchsuche und persönliche Leseliste in einer einfachen Webanwendung kombiniert.
 
 Das Projekt verbindet:
 - eine **externe API** für die Buchsuche
