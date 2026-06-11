@@ -1,6 +1,16 @@
 package de.htw_belin.Bookblock.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+
+@Entity
 public class BookEntry {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     private String title;
     private String author;
@@ -13,6 +23,10 @@ public class BookEntry {
         this.title = title;
         this.author = author;
         this.readingStatus = readingStatus;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public String getTitle() {

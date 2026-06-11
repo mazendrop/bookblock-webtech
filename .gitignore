@@ -35,3 +35,9 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Lokale H2-Datenbank ###
+data/
+
+### macOS ###
+.DS_Store
