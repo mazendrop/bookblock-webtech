@@ -1,5 +1,7 @@
 package de.htw_belin.Bookblock.service;
 
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -32,6 +34,9 @@ public class JwtService {
                 .expiresAt(now.plus(GUELTIG_TAGE, ChronoUnit.DAYS))
                 .subject(email)
                 .build();
-        return encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+        // Wichtig: explizit HS256 (symmetrischer Schluessel). Ohne diesen Header
+        // wuerde Spring RS256 (RSA) annehmen und keinen passenden Schluessel finden.
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 }
