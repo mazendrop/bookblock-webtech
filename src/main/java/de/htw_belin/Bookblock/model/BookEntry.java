@@ -1,5 +1,6 @@
 package de.htw_belin.Bookblock.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,6 +16,10 @@ public class BookEntry {
     private String title;
     private String author;
     private String readingStatus;
+    private String thumbnail;
+
+    @Column(length = 10000)
+    private String description;
 
     public BookEntry() {
     }
@@ -51,5 +56,21 @@ public class BookEntry {
 
     public void setReadingStatus(String readingStatus) {
         this.readingStatus = readingStatus;
+    }
+
+    public String getThumbnail() {
+        return thumbnail;
+    }
+
+    public void setThumbnail(String thumbnail) {
+        this.thumbnail = thumbnail;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

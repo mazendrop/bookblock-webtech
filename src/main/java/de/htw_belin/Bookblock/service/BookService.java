@@ -20,4 +20,15 @@ public class BookService {
     public BookEntry save(BookEntry book) {
         return repository.save(book);
     }
+
+    public BookEntry updateStatus(Long id, String readingStatus) {
+        BookEntry book = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Book not found: " + id));
+        book.setReadingStatus(readingStatus);
+        return repository.save(book);
+    }
+
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
 }
