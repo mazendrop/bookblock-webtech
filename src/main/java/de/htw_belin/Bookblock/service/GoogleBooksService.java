@@ -1,7 +1,7 @@
 package de.htw_belin.Bookblock.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -13,14 +13,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Ruft die Google Books API server-seitig auf. Der API-Key bleibt hier im
- * Backend und taucht nie im Frontend-Bundle auf.
+ * Ruft die Google Books API server-seitig auf. Der API-Key bleibt im Backend
+ * und taucht nie im Frontend-Bundle auf.
+ *
+ * Bewusst ohne Jackson-Import (JsonNode): Die JSON-Antwort wird in eine
+ * {@code Map} deserialisiert. Das kompiliert unabhaengig davon, ob
+ * jackson-databind auf dem Compile-Classpath liegt (bei Spring Boot 4 nicht),
+ * und nutzt zur Laufzeit denselben Converter von spring-boot-starter-web.
  */
 @Service
 public class GoogleBooksService {
 
     private static final int PAGE_SIZE = 12;
     private static final String GOOGLE_URL = "https://www.googleapis.com/books/v1/volumes";
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
+            new ParameterizedTypeReference<>() {};
 
     private final RestClient client = RestClient.create();
     private final String apiKey;
@@ -41,44 +48,51 @@ public class GoogleBooksService {
             url.append("&key=").append(apiKey);
         }
 
-        JsonNode data = client.get().uri(url.toString()).retrieve().body(JsonNode.class);
+        Map<String, Object> data = client.get().uri(url.toString()).retrieve().body(MAP_TYPE);
 
         List<Map<String, Object>> results = new ArrayList<>();
-        if (data != null && data.has("items")) {
-            for (JsonNode item : data.get("items")) {
-                JsonNode info = item.path("volumeInfo");
+        Object itemsObj = data == null ? null : data.get("items");
+        if (itemsObj instanceof List<?> items) {
+            for (Object itemObj : items) {
+                if (!(itemObj instanceof Map<?, ?> item)) continue;
+
+                Object infoObj = item.get("volumeInfo");
+                Map<?, ?> info = infoObj instanceof Map<?, ?> m ? m : Map.of();
 
                 String thumbnail = null;
-                JsonNode images = info.path("imageLinks");
-                if (!images.isMissingNode()) {
-                    String t = images.path("thumbnail").asText(null);
-                    if (t == null) t = images.path("smallThumbnail").asText(null);
-                    if (t != null) thumbnail = t.replace("http://", "https://");
+                if (info.get("imageLinks") instanceof Map<?, ?> images) {
+                    Object t = images.get("thumbnail");
+                    if (t == null) t = images.get("smallThumbnail");
+                    if (t != null) thumbnail = t.toString().replace("http://", "https://");
                 }
 
                 String authors = "Unknown author";
-                if (info.has("authors")) {
-                    List<String> list = new ArrayList<>();
-                    info.get("authors").forEach(n -> list.add(n.asText()));
-                    if (!list.isEmpty()) authors = String.join(", ", list);
+                if (info.get("authors") instanceof List<?> list && !list.isEmpty()) {
+                    List<String> a = new ArrayList<>();
+                    for (Object o : list) a.add(String.valueOf(o));
+                    authors = String.join(", ", a);
                 }
 
                 Map<String, Object> r = new HashMap<>();
-                r.put("googleId", item.path("id").asText(""));
-                r.put("title", info.path("title").asText("Untitled"));
+                r.put("googleId", str(item.get("id"), ""));
+                r.put("title", str(info.get("title"), "Untitled"));
                 r.put("authors", authors);
-                r.put("description", info.path("description").asText("No description available."));
+                r.put("description", str(info.get("description"), "No description available."));
                 r.put("thumbnail", thumbnail);
-                r.put("publishedDate", info.path("publishedDate").asText("n/a"));
-                r.put("averageRating", info.has("averageRating") ? info.get("averageRating").asDouble() : null);
+                r.put("publishedDate", str(info.get("publishedDate"), "n/a"));
+                r.put("averageRating", info.get("averageRating") instanceof Number n ? n.doubleValue() : null);
                 results.add(r);
             }
         }
 
         Map<String, Object> pageResult = new HashMap<>();
         pageResult.put("results", results);
-        pageResult.put("totalItems",
-                data != null && data.has("totalItems") ? data.get("totalItems").asInt() : results.size());
+        Object total = data == null ? null : data.get("totalItems");
+        pageResult.put("totalItems", total instanceof Number n ? n.intValue() : results.size());
         return pageResult;
+    }
+
+    private static String str(Object value, String fallback) {
+        return value == null ? fallback : value.toString();
     }
 }
