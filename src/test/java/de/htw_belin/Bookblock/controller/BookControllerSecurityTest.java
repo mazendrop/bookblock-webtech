@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,8 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Prueft die Autorisierung der Leseliste.
  *
- * Kernidee (aus dem Auth-PDF): Ohne gueltiges Token gibt es keinen Zugriff,
- * und mit Token sieht man nur die eigenen Buecher.
+ * Kernidee: Ohne gueltiges Token gibt es keinen Zugriff, und mit Token sieht
+ * man nur die eigenen Buecher (Besitzer = E-Mail aus dem Token).
  */
 @WebMvcTest(BookController.class)
 @Import(SecurityConfig.class)
@@ -33,11 +32,6 @@ class BookControllerSecurityTest {
     @MockitoBean
     private BookService bookService;
 
-    // Wird nur gebraucht, damit der Resource-Server startet - echte Token-Pruefung
-    // ersetzen wir im Test durch den jwt()-Helfer von spring-security-test.
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
-
     @Test
     void ohne_token_wird_die_leseliste_abgelehnt() throws Exception {
         // Kein Authorization-Header -> 401 Unauthorized
@@ -47,10 +41,10 @@ class BookControllerSecurityTest {
 
     @Test
     void mit_gueltigem_token_bekommt_der_nutzer_seine_leseliste() throws Exception {
-        // Der Service liefert die Buecher genau dieses Nutzers ("sub" = user-123)
-        given(bookService.getBooksOf("user-123")).willReturn(List.of());
+        // Der Service liefert die Buecher genau dieses Nutzers (Besitzer = E-Mail)
+        given(bookService.getBooksOf("lina@example.com")).willReturn(List.of());
 
-        mvc.perform(get("/books").with(jwt().jwt(token -> token.subject("user-123"))))
+        mvc.perform(get("/books").with(jwt().jwt(token -> token.subject("lina@example.com"))))
                 .andExpect(status().isOk());
     }
 }
