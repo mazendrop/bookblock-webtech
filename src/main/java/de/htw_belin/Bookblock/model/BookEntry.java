@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 public class BookEntry {
@@ -13,13 +14,23 @@ public class BookEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Titel darf nicht leer sein")
     private String title;
+
+    @NotBlank(message = "Autor darf nicht leer sein")
     private String author;
+
+    @NotBlank(message = "Lesestatus darf nicht leer sein")
     private String readingStatus;
+
     private String thumbnail;
 
     @Column(length = 10000)
     private String description;
+
+    // Besitzer des Eintrags = eindeutige Okta-Nutzer-ID (JWT "sub").
+    // Wird serverseitig aus dem Token gesetzt, nie vom Client geschickt.
+    private String owner;
 
     public BookEntry() {
     }
@@ -72,5 +83,13 @@ public class BookEntry {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
     }
 }

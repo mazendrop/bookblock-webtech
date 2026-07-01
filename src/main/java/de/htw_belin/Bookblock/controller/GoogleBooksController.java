@@ -2,7 +2,6 @@ package de.htw_belin.Bookblock.controller;
 
 import de.htw_belin.Bookblock.service.GoogleBooksService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,8 +9,8 @@ import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
 
+// CORS wird zentral in SecurityConfig geregelt.
 @RestController
-@CrossOrigin(origins = "*")
 public class GoogleBooksController {
 
     private final GoogleBooksService service;

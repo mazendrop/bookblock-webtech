@@ -1,0 +1,25 @@
+name: Backend CI
+
+# Laeuft bei jedem Push und bei jedem Pull Request.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: JDK 25 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Gradle ausfuehrbar machen
+        run: chmod +x ./gradlew
+
+      - name: Build + Tests
+        run: ./gradlew build --no-daemon
