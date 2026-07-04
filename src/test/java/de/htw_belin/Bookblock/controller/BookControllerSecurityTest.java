@@ -1,50 +1,56 @@
 package de.htw_belin.Bookblock.controller;
 
-import de.htw_belin.Bookblock.config.SecurityConfig;
+import de.htw_belin.Bookblock.model.BookEntry;
 import de.htw_belin.Bookblock.service.BookService;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
- * Prueft die Autorisierung der Leseliste.
+ * Prueft die Autorisierung im Controller: Der Besitzer wird IMMER aus dem
+ * Token gelesen (subject = E-Mail). Egal was der Client sonst mitschickt -
+ * jede:r arbeitet nur mit den eigenen Buechern.
  *
- * Kernidee: Ohne gueltiges Token gibt es keinen Zugriff, und mit Token sieht
- * man nur die eigenen Buecher (Besitzer = E-Mail aus dem Token).
+ * Bewusst als schlanker Unit-Test (JUnit + Mockito), damit er schnell laeuft
+ * und in der Praesentation leicht zu erklaeren ist.
  */
-@WebMvcTest(BookController.class)
-@Import(SecurityConfig.class)
 class BookControllerSecurityTest {
 
-    @Autowired
-    private MockMvc mvc;
+    private final BookService service = mock(BookService.class);
+    private final BookController controller = new BookController(service);
 
-    @MockitoBean
-    private BookService bookService;
-
-    @Test
-    void ohne_token_wird_die_leseliste_abgelehnt() throws Exception {
-        // Kein Authorization-Header -> 401 Unauthorized
-        mvc.perform(get("/books"))
-                .andExpect(status().isUnauthorized());
+    /** Baut ein echtes JWT mit der gewuenschten E-Mail als subject. */
+    private Jwt tokenFuer(String email) {
+        return Jwt.withTokenValue("test-token")
+                .header("alg", "HS256")
+                .subject(email)
+                .build();
     }
 
     @Test
-    void mit_gueltigem_token_bekommt_der_nutzer_seine_leseliste() throws Exception {
-        // Der Service liefert die Buecher genau dieses Nutzers (Besitzer = E-Mail)
-        given(bookService.getBooksOf("lina@example.com")).willReturn(List.of());
+    void der_controller_fragt_nur_die_buecher_des_angemeldeten_nutzers_an() {
+        BookEntry buch = new BookEntry("1984", "George Orwell", "READING");
+        given(service.getBooksOf("lina@example.com")).willReturn(List.of(buch));
 
-        mvc.perform(get("/books").with(jwt().jwt(token -> token.subject("lina@example.com"))))
-                .andExpect(status().isOk());
+        List<BookEntry> ergebnis = controller.getMyBooks(tokenFuer("lina@example.com"));
+
+        assertThat(ergebnis).containsExactly(buch);
+        verify(service).getBooksOf("lina@example.com");
+    }
+
+    @Test
+    void beim_speichern_wird_der_besitzer_aus_dem_token_gesetzt() {
+        BookEntry neu = new BookEntry("Faust", "Goethe", "WANT_TO_READ");
+
+        controller.addBook(neu, tokenFuer("ali@example.com"));
+
+        // Der Controller reicht die E-Mail aus dem Token als Besitzer weiter
+        verify(service).save(neu, "ali@example.com");
     }
 }
