@@ -1,65 +1,64 @@
-# 📚Bookblock
+# BookBlock · Backend
 
-Bookblock ist eine Webanwendung, mit der Benutzer:innen Bücher suchen, Buchinformationen ansehen und interessante Bücher in einer persönlichen Leseliste speichern können.
+[![Backend CI](https://github.com/mazendrop/bookblock-webtech/actions/workflows/ci.yml/badge.svg)](https://github.com/mazendrop/bookblock-webtech/actions/workflows/ci.yml)
 
-Die Anwendung nutzt die **Google Books API**, um passende Bücher zu finden und Informationen wie Titel, Autor:innen, Beschreibung und Cover anzuzeigen.  
-Zusätzlich können gespeicherte Bücher verwaltet werden, zum Beispiel mit einem Lesestatus wie **„Will ich lesen“**, **„Lese ich gerade“** oder **„Fertig gelesen“**.
+Bücher über die Google Books API suchen und in einer **persönlichen Leseliste** speichern, mit Lesestatus
+(„Will ich lesen“, „Lese ich gerade“, „Fertig gelesen“). Projekt im Modul **Webtechnologien an der HTW Berlin**
+(Sommersemester 2026). Dieses Repository ist das REST-Backend; das Frontend liegt in
+[Bookblock-frontend](https://github.com/mazendrop/Bookblock-frontend).
 
-## Idee des Projekts
+*English: Spring Boot REST backend for a reading-list app. Own JWT authentication, a Google Books proxy, per-user data, tests and CI.*
 
-Viele Menschen finden interessante Bücher online, verlieren sie aber später wieder aus dem Blick.  
-Bookblock löst dieses Problem, indem es Buchsuche und persönliche Leseliste in einer einfachen Webanwendung kombiniert.
+| | |
+|---|---|
+| ![Leseliste](docs/reading-list.png) | ![Anmeldung](docs/login-de.png) |
+| Leseliste mit Filter nach Status | Anmeldung (Oberfläche auf Deutsch und Englisch) |
 
-Das Projekt verbindet:
-- eine **externe API** für die Buchsuche
-- ein **eigenes Backend**
-- eine **Datenbank** zum Speichern der Bücher
-- ein **modernes Frontend** im **Brutalism-Stil**
+## Architektur
 
-## Hauptfunktionen
+```mermaid
+flowchart LR
+  FE["Vue 3 SPA<br/>(Bookblock-frontend)"] -->|"REST + JWT"| API["Spring Boot 4<br/>Java 25"]
+  API -->|JPA| DB[("PostgreSQL<br/>lokal: H2")]
+  API -->|"Suche, API-Key bleibt im Backend"| GB["Google Books API"]
+```
 
-- Bücher über den Titel suchen
-- Suchergebnisse anzeigen
-- Buchdetails ansehen
-- Bücher in die persönliche Leseliste speichern
-- Gespeicherte Bücher anzeigen
-- Lesestatus eines Buches ändern
-- Bücher aus der Leseliste löschen
+- **Eigene Nutzerverwaltung:** Registrierung und Login, Passwörter mit **BCrypt** gehasht, Anmeldung per
+  **JWT** (HMAC-SHA256), geprüft von Spring Security als Resource Server.
+- **Daten pro Nutzer:** jeder Eintrag gehört dem angemeldeten Nutzer; der Besitzer wird aus dem Token gesetzt, nicht aus der Anfrage.
+- **Google Books als Proxy:** das Frontend fragt nur das Backend; der API-Key kommt aus einer Umgebungsvariable und erreicht nie den Browser.
+- **Validierung und CORS:** Pflichtfelder per Bean Validation, CORS nur für die konfigurierte Frontend-Adresse.
 
-## Technologien
+## REST-API
 
-### Frontend
-- Vue.js
-- HTML
-- CSS
-- JavaScript
+| Methode | Pfad | |
+|---|---|---|
+| `POST` | `/auth/register`, `/auth/login` | Konto anlegen / anmelden, liefert ein JWT |
+| `GET` | `/search?q=…` | Buchsuche über Google Books |
+| `GET` | `/books` | eigene Leseliste |
+| `POST` | `/books` | Buch speichern |
+| `PUT` | `/books/{id}` | Lesestatus ändern |
+| `DELETE` | `/books/{id}` | Buch entfernen |
 
-### Backend
-- Java
-- Spring Boot
-- REST API
+## Lokal starten
 
-### Datenbank
-- PostgreSQL
+Voraussetzung: JDK 25. Ohne weitere Konfiguration nutzt das Backend eine lokale H2-Datenbank.
 
-### Externe API
-- Google Books API
+```bash
+export JWT_SECRET=$(openssl rand -hex 32)        # mindestens 32 Zeichen
+export FRONTEND_ORIGIN=http://localhost:5173      # Adresse des Frontends (CORS)
+export GOOGLE_BOOKS_API_KEY=…                     # optional, ohne Key drosselt Google schnell
+./gradlew bootRun                                 # http://localhost:8080
+```
 
-### Deployment
-- Render
+Für PostgreSQL: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` setzen.
+Ein `Dockerfile` für das Deployment liegt bei.
 
-## Geplante Erweiterungen
+## Tests und CI
 
-- Filter nach Lesestatus
-- Bessere Fehlermeldungen und Validierung
-- Responsive Design
-- Weitere UI-Verbesserungen im Brutalism-Stil
-- Tests für Frontend und Backend
+```bash
+./gradlew test
+```
 
-## Ziel des Projekts
-
-Das Ziel von Bookblock ist es, eine einfache, übersichtliche und visuell auffällige Buch-Web-App zu entwickeln, die moderne Webtechnologien sinnvoll kombiniert.
-
-## Projektstatus
-
-Das Projekt befindet sich aktuell in der Entwicklung.
+Service-Tests und Sicherheitstests (u. a.: der Controller fragt nur Bücher des angemeldeten Nutzers an, und der
+Besitzer wird beim Speichern aus dem Token gesetzt). GitHub Actions baut und testet jeden Push.
